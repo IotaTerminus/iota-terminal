@@ -1,0 +1,37 @@
+{
+  "name": "angular-ui",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "ng serve --host 0.0.0.0",
+    "dev:onboarding": "ng serve --host 0.0.0.0 --ssl --ssl-cert .certs/iotaterminus.dev+2.pem --ssl-key .certs/iotaterminus.dev+2-key.pem",
+    "build": "ng build",
+    "lint": "ng lint"
+  },
+  "dependencies": {
+    "@angular/animations": "^22.0.6",
+    "@angular/common": "^22.0.6",
+    "@angular/compiler": "^22.0.6",
+    "@angular/core": "^22.0.6",
+    "@angular/platform-browser": "^22.0.6",
+    "@angular/platform-browser-dynamic": "^22.0.6",
+    "@angular/router": "^22.0.6",
+    "rxjs": "^7.8.1",
+    "tslib": "^2.6.3",
+    "zone.js": "^0.15.1"
+  },
+  "devDependencies": {
+    "@angular-eslint/builder": "^18.0.0",
+    "@angular/build": "^22.0.6",
+    "@angular/cli": "^22.0.6",
+    "@angular/compiler-cli": "^22.0.6",
+    "angular-eslint": "^18.0.0",
+    "autoprefixer": "^10.4.19",
+    "eslint": "^9.6.0",
+    "postcss": "^8.4.38",
+    "postcss-import": "^16.1.0",
+    "tailwindcss": "^3.4.4",
+    "typescript": "^6.0.3",
+    "typescript-eslint": "^8.63.0"
+  }
+}

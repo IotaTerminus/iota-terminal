@@ -1,0 +1,14 @@
+{
+  "/api/go": {
+    "target": "http://localhost:8080",
+    "changeOrigin": true
+  },
+  "/api/rust": {
+    "target": "http://localhost:8081",
+    "changeOrigin": true
+  },
+  "/api/ts": {
+    "target": "http://localhost:8082",
+    "changeOrigin": true
+  }
+}

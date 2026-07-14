@@ -1,0 +1,25 @@
+{
+  "name": "iota-terminal",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Terminal-themed personal website: Angular & React frontends, pluggable Go/Rust/TS backends.",
+  "workspaces": [
+    "apps/react-ui",
+    "apps/angular-ui",
+    "apps/backend-ts",
+    "apps/backend-go",
+    "apps/backend-rust"
+  ],
+  "scripts": {
+    "build": "turbo run build",
+    "dev": "turbo run dev",
+    "dev:all": "concurrently -n react,angular,go,rust,ts -c blue,red,cyan,yellow,green \"npm run dev --workspace=react-ui\" \"npm run dev --workspace=angular-ui\" \"npm run dev --workspace=backend-go\" \"npm run dev --workspace=backend-rust\" \"npm run dev --workspace=backend-ts\"",
+    "lint": "turbo run lint",
+    "test": "turbo run test"
+  },
+  "devDependencies": {
+    "concurrently": "^10.0.3",
+    "turbo": "^2.10.5"
+  },
+  "packageManager": "npm@11.18.0"
+}

@@ -1,0 +1,54 @@
+# Template for config.yml (gitignored — contains your tunnel ID). Don't edit
+# this file by hand each time — set TUNNEL_ID in the repo-root .env (kept out
+# of git, populated from the 1Password "iota-terminal" environment on the
+# Pi) and run `deploy/cloudflared/generate-config.sh` to render config.yml
+# from this template via envsubst.
+#
+# One tunnel, three public hostnames. Path-based rules are checked in order
+# per hostname, so /api/<backend> is peeled off to the matching container
+# and everything else falls through to the frontend serving that hostname.
+tunnel: ${TUNNEL_ID}
+credentials-file: /etc/cloudflared/${TUNNEL_ID}.json
+
+ingress:
+  # Root domain: onboarding-only picker (served by angular-ui, see
+  # apps/angular-ui/src/app.component.ts). No real API traffic expected, but
+  # the /api rules are kept for parity with the other two hostnames.
+  - hostname: iotaterminus.dev
+    path: /api/go/.*
+    service: http://backend-go:8080
+  - hostname: iotaterminus.dev
+    path: /api/rust/.*
+    service: http://backend-rust:8081
+  - hostname: iotaterminus.dev
+    path: /api/ts/.*
+    service: http://backend-ts:8082
+  - hostname: iotaterminus.dev
+    service: http://angular-ui:80
+
+  - hostname: angular.iotaterminus.dev
+    path: /api/go/.*
+    service: http://backend-go:8080
+  - hostname: angular.iotaterminus.dev
+    path: /api/rust/.*
+    service: http://backend-rust:8081
+  - hostname: angular.iotaterminus.dev
+    path: /api/ts/.*
+    service: http://backend-ts:8082
+  - hostname: angular.iotaterminus.dev
+    service: http://angular-ui:80
+
+  - hostname: react.iotaterminus.dev
+    path: /api/go/.*
+    service: http://backend-go:8080
+  - hostname: react.iotaterminus.dev
+    path: /api/rust/.*
+    service: http://backend-rust:8081
+  - hostname: react.iotaterminus.dev
+    path: /api/ts/.*
+    service: http://backend-ts:8082
+  - hostname: react.iotaterminus.dev
+    service: http://react-ui:80
+
+  # Catch-all required by cloudflared.
+  - service: http_status:404

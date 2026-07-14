@@ -1,0 +1,76 @@
+# Production stack for the Pi. Images are built by
+# .github/workflows/docker-publish.yml and pulled from GHCR — nothing is
+# built on the Pi itself.
+#
+# Usage on the Pi (see deploy/DEPLOYMENT.md for one-time setup):
+#   cd deploy && docker compose up -d
+#
+# Ongoing updates: watchtower polls GHCR every 5 minutes and redeploys any
+# container whose image changed. No manual steps after `git push`.
+
+services:
+  backend-go:
+    image: ghcr.io/iotaterminus/iota-terminal-backend-go:latest
+    restart: unless-stopped
+    labels:
+      - com.centurylinklabs.watchtower.enable=true
+
+  backend-rust:
+    image: ghcr.io/iotaterminus/iota-terminal-backend-rust:latest
+    restart: unless-stopped
+    labels:
+      - com.centurylinklabs.watchtower.enable=true
+
+  backend-ts:
+    image: ghcr.io/iotaterminus/iota-terminal-backend-ts:latest
+    restart: unless-stopped
+    # No backend reads shared/db/iota.sqlite yet, but this volume reserves a
+    # persistent mount point for whichever backend ends up owning it, so the
+    # data survives image updates/recreations once that lands.
+    volumes:
+      - db-data:/app/db
+    labels:
+      - com.centurylinklabs.watchtower.enable=true
+
+  react-ui:
+    image: ghcr.io/iotaterminus/iota-terminal-react-ui:latest
+    restart: unless-stopped
+    labels:
+      - com.centurylinklabs.watchtower.enable=true
+
+  angular-ui:
+    image: ghcr.io/iotaterminus/iota-terminal-angular-ui:latest
+    restart: unless-stopped
+    labels:
+      - com.centurylinklabs.watchtower.enable=true
+
+  # Single point of contact with Cloudflare — the only piece that needs a
+  # public network path. Routes each hostname/path to the right container
+  # over the internal compose network (see cloudflared/config.yml).
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    restart: unless-stopped
+    command: tunnel --config /etc/cloudflared/config.yml run
+    volumes:
+      - ./cloudflared:/etc/cloudflared:ro
+    depends_on:
+      - backend-go
+      - backend-rust
+      - backend-ts
+      - react-ui
+      - angular-ui
+
+  # Polls GHCR for new image digests on the 5 labelled services above and
+  # replaces the running container automatically — this is the entire
+  # "deploy" step once CI has pushed a new image.
+  watchtower:
+    image: containrrr/watchtower
+    restart: unless-stopped
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    command: --label-enable --interval 300 --cleanup
+    environment:
+      - WATCHTOWER_LABEL_ENABLE=true
+
+volumes:
+  db-data:

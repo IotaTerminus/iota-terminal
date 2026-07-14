@@ -1,0 +1,11 @@
+{
+  "name": "backend-go",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Go implementation of the iota-terminal API contract. Scripts shell out to the native Go toolchain.",
+  "scripts": {
+    "build": "go build -o bin/backend-go .",
+    "dev": "go run main.go",
+    "lint": "go vet ./..."
+  }
+}

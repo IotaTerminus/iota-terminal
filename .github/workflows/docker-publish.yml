@@ -1,0 +1,113 @@
+name: Build & publish images
+
+# Builds all 5 app images for linux/arm64 (Raspberry Pi 4) and pushes them to
+# GHCR on every push to main. The Pi's watchtower container polls GHCR and
+# redeploys automatically — this workflow is the entire "release" step.
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+env:
+  REGISTRY: ghcr.io
+
+jobs:
+  # Builds the whole stack for the runner's native arch (not the arm64
+  # images shipped to the Pi) and hits every service to catch broken
+  # Dockerfiles/routing before anything is published or pulled by watchtower.
+  smoke-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build and start stack
+        working-directory: deploy
+        run: |
+          docker compose -f docker-compose.yml -f docker-compose.ci.yml \
+            up --build -d backend-go backend-rust backend-ts react-ui angular-ui
+
+      - name: Wait for services
+        run: |
+          for target in \
+            "http://localhost:8080/api/go/system/status" \
+            "http://localhost:8081/api/rust/system/status" \
+            "http://localhost:8082/api/ts/system/status" \
+            "http://localhost:8090/" \
+            "http://localhost:8091/"; do
+            echo "waiting for $target"
+            timeout 60 sh -c "until curl -sf $target > /dev/null; do sleep 2; done"
+          done
+
+      - name: Verify backend responses
+        run: |
+          curl -sf http://localhost:8080/api/go/system/status | grep -q '"backend":"go"'
+          curl -sf http://localhost:8081/api/rust/system/status | grep -q '"backend":"rust"'
+          curl -sf http://localhost:8082/api/ts/system/status | grep -q '"backend":"ts"'
+          curl -sf http://localhost:8090/ | grep -qi '<html'
+          curl -sf http://localhost:8091/ | grep -qi '<html'
+
+      - name: Show logs on failure
+        if: failure()
+        working-directory: deploy
+        run: docker compose -f docker-compose.yml -f docker-compose.ci.yml logs
+
+      - name: Tear down
+        if: always()
+        working-directory: deploy
+        run: docker compose -f docker-compose.yml -f docker-compose.ci.yml down -v
+
+  build-and-push:
+    needs: smoke-test
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    strategy:
+      matrix:
+        include:
+          - app: backend-go
+            context: apps/backend-go
+            dockerfile: apps/backend-go/Dockerfile
+          - app: backend-rust
+            context: apps/backend-rust
+            dockerfile: apps/backend-rust/Dockerfile
+          - app: backend-ts
+            context: .
+            dockerfile: apps/backend-ts/Dockerfile
+          - app: react-ui
+            context: .
+            dockerfile: apps/react-ui/Dockerfile
+          - app: angular-ui
+            context: .
+            dockerfile: apps/angular-ui/Dockerfile
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: docker/setup-qemu-action@v3
+      - uses: docker/setup-buildx-action@v3
+
+      - uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # GHCR image names must be lowercase; github.repository_owner preserves
+      # the account's actual casing (IotaTerminus), which Docker rejects.
+      - name: Compute lowercase image owner
+        id: owner
+        run: echo "lc=${GITHUB_REPOSITORY_OWNER,,}" >> "$GITHUB_OUTPUT"
+
+      - uses: docker/build-push-action@v6
+        with:
+          context: ${{ matrix.context }}
+          file: ${{ matrix.dockerfile }}
+          platforms: linux/arm64
+          push: true
+          tags: |
+            ${{ env.REGISTRY }}/${{ steps.owner.outputs.lc }}/iota-terminal-${{ matrix.app }}:latest
+            ${{ env.REGISTRY }}/${{ steps.owner.outputs.lc }}/iota-terminal-${{ matrix.app }}:${{ github.sha }}
+          cache-from: type=gha,scope=${{ matrix.app }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.app }}

@@ -1,0 +1,31 @@
+node_modules/
+dist/
+build/
+.angular/
+out-tsc/
+*.log
+*.tsbuildinfo
+
+# Go
+apps/backend-go/backend-go
+apps/backend-go/bin/
+
+# Rust
+target/
+
+# SQLite runtime files
+shared/db/iota.sqlite
+shared/db/iota.sqlite-wal
+shared/db/iota.sqlite-shm
+.turbo/
+
+# Cloudflare Tunnel credentials — never commit tunnel ID/creds, only the
+# .example template
+deploy/cloudflared/config.yml
+deploy/cloudflared/*.json
+
+# Local secrets (e.g. TUNNEL_ID) — never commit, only .env.example
+.env
+
+# Local mkcert TLS certs/keys for HTTPS dev servers — machine-specific, never commit
+apps/*/.certs/
