@@ -9,7 +9,7 @@
 @layer base {
   html,
   body {
-    @apply bg-terminal-bg text-terminal-red font-mono;
+    @apply bg-terminal-bg text-terminal-fg font-mono;
   }
 }
 

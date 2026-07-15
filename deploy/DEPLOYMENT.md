@@ -13,7 +13,7 @@ to `main`.
 
 1. **Install Docker** (with the compose plugin):
    ```bash
-   curl -fsSL https://get.docker.com | sh
+   curl -fsSL [https://get.docker.com](https://get.docker.com) | sh
    sudo usermod -aG docker $USER   # re-login after this
    ```
 
@@ -49,41 +49,31 @@ to `main`.
    docker pull ghcr.io/<owner>/iota-terminal-backend-go:latest
    ```
 
-3. **Create the Cloudflare Tunnel** (from any machine with `cloudflared`
-   installed, or via the Zero Trust dashboard):
-   ```bash
-   cloudflared tunnel login
-   cloudflared tunnel create iota-terminal
-   ```
-   This writes `<TUNNEL_ID>.json` credentials. Copy that file to
-   `deploy/cloudflared/` on the Pi.
+3. **Create the Cloudflare Zero Trust Tunnel.** Routing is managed entirely in the cloud — no local config files are needed.
+   - Go to the Cloudflare Zero Trust Dashboard -> **Networks** -> **Tunnels**.
+   - Click **Create a tunnel** (Select Cloudflared)
+   - Name it `iota-tunnel`
+   - under the installation instructions, copy the long string following `--token`
 
-4. **Add DNS records** pointing each hostname at the tunnel:
-   ```bash
-   cloudflared tunnel route dns iota-terminal iotaterminus.dev
-   cloudflared tunnel route dns iota-terminal angular.iotaterminus.dev
-   cloudflared tunnel route dns iota-terminal react.iotaterminus.dev
-   ```
-
-5. **Configure ingress.** `deploy/cloudflared/config.yml.example` is a
-   template with `${TUNNEL_ID}` placeholders — don't fill it in by hand.
-   Instead, put the tunnel ID from step 3 into a `TUNNEL_ID=` entry in the
-   repo-root `.env` (gitignored; on the Pi this is populated by the
-   1Password "iota-terminal" environment rather than typed in manually —
-   `.env.example` documents the expected keys), then render the real config:
-   ```bash
-   ./deploy/cloudflared/generate-config.sh
-   ```
-   This writes `deploy/cloudflared/config.yml` (also gitignored, since it
-   embeds your tunnel ID). Re-run the script any time `TUNNEL_ID` changes.
-
-6. **Clone the repo on the Pi** (only `deploy/` is actually needed at
-   runtime, but cloning the whole repo is simplest):
+4. **Clone and configure the environment:**
    ```bash
    git clone git@github.com:IotaTerminus/iota-terminal.git
    cd iota-terminal/deploy
+
+   # Create the environment file with the token you copied in Step 3
+   echo "TUNNEL_TOKEN=your_token_here" > .env
+   ```
+   *note:* `.env` is populated via `1Password environments` to make cred rotation painless.
+
+5. **Start the stack:**
+   ```bash
    docker compose up -d
    ```
+   check that the tunnel connected successfully with `docker compose logs -f cloudflared`
+
+6. **Configure Ingress Routes** Back in the Cloudflare Zero Trust dashboard, go to your tunnel's **Published application routes** (formerlly Public Hostnames) tab and add your routes. Cloudflare automatically provisions DNS CNAME records when you save these routes.
+   - e.g., `react.iotaterminus.dev` -> `HTTP` -> `react-ui:80`
+   - e.g., `iotaterminus.dev/api/go` -> `HTTP` -> `backend-go:8080`
 
 Check that the tunnel is healthy with `docker compose logs -f cloudflared`,
 then confirm `iotaterminus.dev`, `angular.iotaterminus.dev`, and
@@ -114,8 +104,7 @@ docker compose pull && docker compose up -d
 
 1. Add its Dockerfile under `apps/<name>/Dockerfile`.
 2. Add a matrix entry to `.github/workflows/docker-publish.yml`.
-3. Add the service to `deploy/docker-compose.yml` (with the watchtower
-   label) and an ingress rule to `deploy/cloudflared/config.yml`.
+3. Add the service to `deploy/docker-compose.yml` (ensuring you include the `com.centurylinklabs.watchtower.enable=true` label).
 
 ## Testing the stack locally before pushing
 
