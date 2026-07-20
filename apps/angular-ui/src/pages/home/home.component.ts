@@ -30,6 +30,7 @@ export class HomeComponent implements OnInit {
         this.cdr.detectChanges();
       })
       .catch((err) => {
+        console.error('Error fetching system status:', err);
         this.status = null;
         this.cdr.detectChanges();
       });

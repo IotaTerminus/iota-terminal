@@ -6,7 +6,8 @@ import AboutMe from './pages/AboutMe';
 import AboutSite from './pages/AboutSite';
 import Projects from './pages/Projects';
 import Resume from './pages/Resume';
-import Contact from './pages/Contact';
+// TODO - re-enable contact page
+// import Contact from './pages/Contact';
 import NotFound from './pages/NotFound';
 
 registerIotaCursor();
@@ -25,7 +26,8 @@ export default function App() {
         <Route path="stack" element={<AboutSite />} />
         <Route path="projects" element={<Projects />} />
         <Route path="resume" element={<Resume />} />
-        <Route path="contact" element={<Contact />} />
+        {/* TODO - re-enable contact page */}
+        {/* <Route path="contact" element={<Contact />} /> */}
         <Route path="*" element={<NotFound />} />
       </Route>
     </Routes>

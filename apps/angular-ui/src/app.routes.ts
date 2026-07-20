@@ -5,7 +5,8 @@ import { AboutMeComponent } from './pages/about-me/about-me.component';
 import { AboutSiteComponent } from './pages/about-site/about-site.component';
 import { ProjectsComponent } from './pages/projects/projects.component';
 import { ResumeComponent } from './pages/resume/resume.component';
-import { ContactComponent } from './pages/contact/contact.component';
+// TODO - re-enable contact page
+// import { ContactComponent } from './pages/contact/contact.component';
 import { NotFoundComponent } from './pages/not-found/not-found.component';
 
 /**
@@ -22,7 +23,8 @@ export const routes: Routes = [
       { path: 'stack', component: AboutSiteComponent },
       { path: 'projects', component: ProjectsComponent },
       { path: 'resume', component: ResumeComponent },
-      { path: 'contact', component: ContactComponent },
+      // TODO - re-enable contact page
+      // { path: 'contact', component: ContactComponent },
       { path: '**', component: NotFoundComponent }
     ]
   }
