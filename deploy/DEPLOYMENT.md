@@ -60,8 +60,16 @@ to `main`.
    git clone git@github.com:IotaTerminus/iota-terminal.git
    cd iota-terminal/deploy
 
-   # Create the environment file with the token you copied in Step 3
-   echo "TUNNEL_TOKEN=your_token_here" > .env
+   # Create the environment file with the token you copied in Step 3, plus
+   # the Twilio credentials used by /api/<backend>/contact to text a
+   # personal number on form submission (see deploy/.env.example)
+   cat > .env <<'EOF'
+   TUNNEL_TOKEN=your_token_here
+   TWILIO_ACCOUNT_SID=your_account_sid
+   TWILIO_AUTH_TOKEN=your_auth_token
+   TWILIO_FROM_NUMBER=your_twilio_number
+   TWILIO_TO_NUMBER=your_personal_number
+   EOF
    ```
    *note:* `.env` is populated via `1Password environments` to make cred rotation painless.
 
@@ -128,3 +136,7 @@ docker compose -f docker-compose.yml -f docker-compose.ci.yml down -v
 
 `docker-compose.ci.yml` intentionally omits `cloudflared`/`watchtower` — they
 need real tunnel credentials and aren't relevant to a build/route smoke test.
+
+To also exercise `/contact` (Twilio SMS), set the four `TWILIO_*` vars in
+`deploy/.env` before bringing the stack up — otherwise the endpoint responds
+but logs a warning and skips sending.

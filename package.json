@@ -4,11 +4,8 @@
   "version": "1.0.0",
   "description": "Terminal-themed personal website: Angular & React frontends, pluggable Go/Rust/TS backends.",
   "workspaces": [
-    "apps/react-ui",
-    "apps/angular-ui",
-    "apps/backend-ts",
-    "apps/backend-go",
-    "apps/backend-rust"
+    "apps/*",
+    "shared/*"
   ],
   "scripts": {
     "build": "turbo run build",
@@ -21,5 +18,13 @@
     "concurrently": "^10.0.3",
     "turbo": "^2.10.5"
   },
-  "packageManager": "npm@11.18.0"
+  "packageManager": "npm@11.18.0",
+  "allowScripts": {
+    "esbuild@0.27.7": true,
+    "esbuild@0.28.1": true,
+    "esbuild@0.21.5": true,
+    "@parcel/watcher@2.5.6": true,
+    "lmdb@3.5.4": true,
+    "msgpackr-extract@3.0.4": true
+  }
 }

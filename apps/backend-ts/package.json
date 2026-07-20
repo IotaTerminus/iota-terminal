@@ -11,6 +11,9 @@
     "lint": "echo \"(no lint configured for backend-ts)\""
   },
   "dependencies": {
+    "@iota/types": "*",
+    "@iota/ui": "*",
+    "dotenv": "^16.4.5",
     "express": "^4.19.2"
   },
   "devDependencies": {

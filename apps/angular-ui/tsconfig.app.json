@@ -1,8 +1,15 @@
 {
   "extends": "./tsconfig.json",
   "compilerOptions": {
-    "outDir": "./out-tsc/app",
+    "outDir": "../../dist/apps/angular-ui",
     "types": []
   },
-  "files": ["src/main.ts"]
+  "files": [
+    "src/main.ts"
+  ],
+  "include": [
+    "src/**/*.ts",
+    "../../shared/types/src/**/*.ts",
+    "../../shared/content/src/**/*.ts"
+  ]
 }

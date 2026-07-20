@@ -12,18 +12,33 @@ services:
   backend-go:
     image: ghcr.io/iotaterminus/iota-terminal-backend-go:latest
     restart: unless-stopped
+    environment:
+      - TWILIO_ACCOUNT_SID=${TWILIO_ACCOUNT_SID}
+      - TWILIO_AUTH_TOKEN=${TWILIO_AUTH_TOKEN}
+      - TWILIO_FROM_NUMBER=${TWILIO_FROM_NUMBER}
+      - TWILIO_TO_NUMBER=${TWILIO_TO_NUMBER}
     labels:
       - com.centurylinklabs.watchtower.enable=true
 
   backend-rust:
     image: ghcr.io/iotaterminus/iota-terminal-backend-rust:latest
     restart: unless-stopped
+    environment:
+      - TWILIO_ACCOUNT_SID=${TWILIO_ACCOUNT_SID}
+      - TWILIO_AUTH_TOKEN=${TWILIO_AUTH_TOKEN}
+      - TWILIO_FROM_NUMBER=${TWILIO_FROM_NUMBER}
+      - TWILIO_TO_NUMBER=${TWILIO_TO_NUMBER}
     labels:
       - com.centurylinklabs.watchtower.enable=true
 
   backend-ts:
     image: ghcr.io/iotaterminus/iota-terminal-backend-ts:latest
     restart: unless-stopped
+    environment:
+      - TWILIO_ACCOUNT_SID=${TWILIO_ACCOUNT_SID}
+      - TWILIO_AUTH_TOKEN=${TWILIO_AUTH_TOKEN}
+      - TWILIO_FROM_NUMBER=${TWILIO_FROM_NUMBER}
+      - TWILIO_TO_NUMBER=${TWILIO_TO_NUMBER}
     # No backend reads shared/db/iota.sqlite yet, but this volume reserves a
     # persistent mount point for whichever backend ends up owning it, so the
     # data survives image updates/recreations once that lands.

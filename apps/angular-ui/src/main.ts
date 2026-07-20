@@ -1,5 +1,9 @@
 import { provideZoneChangeDetection } from "@angular/core";
 import { bootstrapApplication } from '@angular/platform-browser';
+import { provideRouter } from '@angular/router';
 import { AppComponent } from './app.component';
+import { routes } from './app.routes';
 
-bootstrapApplication(AppComponent, {providers: [provideZoneChangeDetection()]}).catch((err) => console.error(err));
+bootstrapApplication(AppComponent, {
+  providers: [provideZoneChangeDetection(), provideRouter(routes)]
+}).catch((err) => console.error(err));

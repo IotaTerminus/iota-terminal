@@ -1,0 +1,10 @@
+{
+  // Tailwind's @tailwind/@apply/@layer at-rules aren't standard CSS, so
+  // VS Code's built-in CSS/SCSS/LESS validators falsely flag them as
+  // "Unknown at rule" in shared/styles/styles.css and both apps' global
+  // stylesheets. Disable the built-in validator here; the Tailwind CSS
+  // IntelliSense extension (see extensions.json) understands them instead.
+  "css.validate": false,
+  "scss.validate": false,
+  "less.validate": false
+}

@@ -7,7 +7,9 @@ Terminal-themed personal website: Angular & React frontends, pluggable Go/Rust/T
 - `apps/react-ui`, `apps/angular-ui` — independent frontends sharing a Tailwind theme from `shared/styles/tailwind.preset.js` and `shared/styles/styles.css` (imported via `postcss-import` in each app's own global stylesheet).
 - `apps/backend-go`, `apps/backend-rust`, `apps/backend-ts` — three interchangeable implementations of the same API contract (currently just `GET /api/<backend>/system/status`, e.g. `/api/go/system/status`, returning `{ backend, status, version }`). When adding an endpoint, implement it identically in all three, each still prefixed with its own `/api/<backend>` path.
 - `shared/db` — single SQLite database (`iota.sqlite`) and its `migrations/schema.sql` baseline. No backend reads/writes it yet.
-- npm workspaces (`apps/react-ui`, `apps/angular-ui`, `apps/backend-ts`, `apps/backend-go`, `apps/backend-rust`) orchestrated by Turborepo (`turbo.json`); Go/Rust workspaces just shell out to their native toolchains via npm scripts.
+- `shared/types` (`@iota/types`) — framework-agnostic TypeScript package: enums (`src/enums.ts`), domain models (`src/models/`), and API payload interfaces (`src/payloads/`), all re-exported from `src/index.ts`. Consumed with `import type { SystemStatus } from '@iota/types'` in both frontends. Note: `BackendType` enum uses `TypeScript = 'typescript'`, which is inconsistent with the `'ts'` literal used everywhere else (`active_backend` storage values, `/api/ts` route prefix, `BackendId` type) — don't conflate the two when adding backend-related types.
+- `shared/ui` (`@iota/ui`) — framework-agnostic UI components implemented as native Custom Elements (e.g. `IotaCursor` in `src/cursor.ts`, registered via `registerIotaCursor()`), so the same component works unmodified in both React and Angular. Both frontends call `registerIotaCursor()` once at startup (`App.tsx` / `app.component.ts`) then reference the custom element (`<iota-cursor>`) in markup.
+- npm workspaces (`apps/react-ui`, `apps/angular-ui`, `apps/backend-ts`, `apps/backend-go`, `apps/backend-rust`, `shared/types`, `shared/ui`) orchestrated by Turborepo (`turbo.json`); Go/Rust workspaces just shell out to their native toolchains via npm scripts.
 
 ## Backend selection (frontend architecture)
 
@@ -26,10 +28,11 @@ Each app has a `Dockerfile` (`apps/*/Dockerfile`); frontend images build the app
 ## Build & dev commands
 
 ```bash
-npm install            # installs react-ui, angular-ui, backend-ts (JS/TS workspaces only)
+npm install            # installs react-ui, angular-ui, backend-ts, shared/types, shared/ui (JS/TS workspaces only)
 make db-init            # creates shared/db/iota.sqlite (WAL enabled) from shared/db/migrations/schema.sql
 make db-clean           # removes iota.sqlite and its WAL/SHM sidecars
-npm run dev             # turbo dev across all JS/TS workspaces
+npm run dev             # turbo dev across all JS/TS workspaces only (react-ui :5173, angular-ui :4200, backend-ts :8082)
+npm run dev:all         # dev + backend-go (:8080) + backend-rust (:8081) concurrently (labeled/colored output), single Ctrl+C stops all
 npm run build           # turbo run build (all workspaces)
 npm run lint            # turbo run lint (all workspaces)
 ```
@@ -49,4 +52,8 @@ cd apps/backend-rust && cargo run          # :8081, lint via `cargo clippy -- -D
 cd apps/backend-ts && npm run dev          # :8082 (tsx watch)
 ```
 
-There are no test suites configured in any workspace yet (`backend-ts`'s `lint` script is also a no-op placeholder).
+There are no test suites configured in any workspace yet (`backend-ts`'s `lint` script and root `npm run test` are no-op placeholders).
+
+`make clean-all` / `make refresh` (root `Makefile`) sweep `node_modules`, `.turbo`, `dist`, `.angular`, `out-tsc`, `bin` across the monorepo and optionally reinstall + rebuild (`REGEN_LOCK=true make refresh` also deletes `package-lock.json` first).
+
+`angular-ui`'s onboarding picker (rendered only when `hostname === 'iotaterminus.dev'`) requires HSTS-forced HTTPS to view locally — see README's "Viewing the onboarding page locally" for the `mkcert` + `/etc/hosts` + `npm run dev:onboarding` setup.

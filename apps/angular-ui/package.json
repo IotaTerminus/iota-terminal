@@ -13,9 +13,13 @@
     "@angular/common": "^22.0.6",
     "@angular/compiler": "^22.0.6",
     "@angular/core": "^22.0.6",
+    "@angular/forms": "^22.0.6",
     "@angular/platform-browser": "^22.0.6",
     "@angular/platform-browser-dynamic": "^22.0.6",
     "@angular/router": "^22.0.6",
+    "@iota/content": "*",
+    "@iota/types": "*",
+    "@iota/ui": "*",
     "rxjs": "^7.8.1",
     "tslib": "^2.6.3",
     "zone.js": "^0.15.1"

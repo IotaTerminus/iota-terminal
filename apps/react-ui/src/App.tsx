@@ -1,30 +1,33 @@
-import { useEffect, useState } from 'react';
-import { getActiveBackend, getApiBaseUrl, type BackendId } from './backend';
+import { Route, Routes } from 'react-router-dom';
+import { registerIotaCursor, registerIotaWindow } from '@iota/ui';
+import Layout from './layout/Layout';
+import Home from './pages/Home';
+import AboutMe from './pages/AboutMe';
+import AboutSite from './pages/AboutSite';
+import Projects from './pages/Projects';
+import Resume from './pages/Resume';
+import Contact from './pages/Contact';
+import NotFound from './pages/NotFound';
 
-interface SystemStatus {
-  backend: string;
-  status: string;
-  version: string;
-}
+registerIotaCursor();
+registerIotaWindow();
 
+/**
+ * Route paths mirror @iota/content's NAV_ITEMS ids/paths (home, about,
+ * stack, projects, resume, contact) so the nav bar and router never drift.
+ */
 export default function App() {
-  const [activeBackend] = useState<BackendId>(getActiveBackend());
-  const [status, setStatus] = useState<SystemStatus | null>(null);
-
-  useEffect(() => {
-    fetch(`${getApiBaseUrl()}/system/status`)
-      .then((res) => res.json())
-      .then(setStatus)
-      .catch(() => setStatus(null));
-  }, []);
-
   return (
-    <main className="min-h-screen flex flex-col items-center justify-center gap-4">
-      <h1 className="text-2xl">
-        iota-terminal <span className="terminal-cursor">&nbsp;</span>
-      </h1>
-      <p>react-ui &mdash; active backend: {activeBackend}</p>
-      <pre>{status ? JSON.stringify(status, null, 2) : 'connecting...'}</pre>
-    </main>
+    <Routes>
+      <Route element={<Layout />}>
+        <Route index element={<Home />} />
+        <Route path="about" element={<AboutMe />} />
+        <Route path="stack" element={<AboutSite />} />
+        <Route path="projects" element={<Projects />} />
+        <Route path="resume" element={<Resume />} />
+        <Route path="contact" element={<Contact />} />
+        <Route path="*" element={<NotFound />} />
+      </Route>
+    </Routes>
   );
 }

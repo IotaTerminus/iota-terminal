@@ -11,4 +11,5 @@ RUN npm run build --workspace=angular-ui -- --configuration production
 
 FROM caddy:2-alpine
 COPY --from=build /repo/apps/angular-ui/dist/angular-ui /usr/share/caddy
+COPY apps/angular-ui/Caddyfile /etc/caddy/Caddyfile
 EXPOSE 80

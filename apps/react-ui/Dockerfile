@@ -11,4 +11,5 @@ RUN npm run build --workspace=react-ui
 
 FROM caddy:2-alpine
 COPY --from=build /repo/apps/react-ui/dist /usr/share/caddy
+COPY apps/react-ui/Caddyfile /etc/caddy/Caddyfile
 EXPOSE 80

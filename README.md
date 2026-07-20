@@ -4,8 +4,8 @@ Terminal-themed Personal website. Utilizes Angular &amp; React front-ends that c
 ## Structure
 
 - `apps/react-ui`, `apps/angular-ui` — independent frontends sharing a Tailwind theme from `shared/styles/tailwind.preset.js`.
-- `apps/backend-go`, `apps/backend-rust`, `apps/backend-ts` — three interchangeable implementations of the same API contract (currently just `GET /api/<backend>/system/status`, e.g. `/api/go/system/status`).
-- `shared/db` — single SQLite database (`iota.sqlite`) and its `migrations/schema.sql` baseline.
+- `apps/backend-go`, `apps/backend-rust`, `apps/backend-ts` — three interchangeable implementations of the same API contract: `GET /api/<backend>/system/status` (e.g. `/api/go/system/status`) and `POST /api/<backend>/contact` (e.g. `/api/go/contact`), which sends an SMS via Twilio when the contact form is submitted.
+- `shared/*` — Tailwind theme, `@iota/types`, `@iota/content`, `@iota/ui` (shared Custom Elements), and the shared SQLite db. See [`shared/README.md`](shared/README.md) for details.
 
 ## Getting started
 
@@ -14,6 +14,22 @@ npm install          # installs react-ui, angular-ui, backend-ts
 make db-init          # creates shared/db/iota.sqlite (WAL enabled) from schema.sql
 npm run dev            # turbo dev across all JS/TS workspaces, reachable on your LAN
 ```
+
+### Sending contact-form SMS notifications locally
+
+The `/contact` endpoint (all three backends) sends an SMS via Twilio. To test
+it locally, copy the root `.env.example` to `.env` and fill in your Twilio
+credentials and personal number:
+
+```bash
+cp .env.example .env
+```
+
+Each backend loads this root `.env` automatically when run via its
+documented local dev command below (production instead gets these vars
+injected by `deploy/docker-compose.yml` — see [`deploy/DEPLOYMENT.md`](deploy/DEPLOYMENT.md)).
+If `.env` is missing or incomplete, the endpoint still responds but logs a
+warning and skips sending the SMS.
 
 `npm run dev` only starts the JS/TS workspaces (`react-ui` on `:5173`, `angular-ui` on `:4200`, `backend-ts` on `:8082`). To also spin up the Go and Rust backends in the same terminal, use:
 
