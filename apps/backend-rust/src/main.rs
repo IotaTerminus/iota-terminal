@@ -2,7 +2,7 @@
 
 use axum::{
     extract::{ConnectInfo, State},
-    http::StatusCode,
+    http::{HeaderMap, StatusCode},
     routing::{get, post},
     Json, Router,
 };
@@ -106,9 +106,22 @@ async fn send_contact_sms(sub: &ContactSubmission) -> Result<bool, reqwest::Erro
     Ok(res.status().is_success())
 }
 
+// Behind Cloudflare Tunnel, the socket address reflects the tunnel
+// connection rather than the real visitor, so prefer Cloudflare's
+// CF-Connecting-IP header (falling back to the socket address for local
+// dev, where there's no Cloudflare proxy).
+fn client_ip(headers: &HeaderMap, addr: &SocketAddr) -> String {
+    headers
+        .get("cf-connecting-ip")
+        .and_then(|v| v.to_str().ok())
+        .map(|s| s.to_string())
+        .unwrap_or_else(|| addr.ip().to_string())
+}
+
 async fn contact(
     State(rate_limiter): State<AppState>,
     ConnectInfo(addr): ConnectInfo<SocketAddr>,
+    headers: HeaderMap,
     Json(sub): Json<ContactSubmission>,
 ) -> (StatusCode, Json<ContactResponse>) {
     if sub.name.is_empty() || sub.email.is_empty() || sub.message.is_empty() {
@@ -120,7 +133,7 @@ async fn contact(
         return (StatusCode::OK, Json(ContactResponse { ok: true }));
     }
 
-    if !rate_limiter.allow(&addr.ip().to_string()) {
+    if !rate_limiter.allow(&client_ip(&headers, &addr)) {
         return (
             StatusCode::TOO_MANY_REQUESTS,
             Json(ContactResponse { ok: false }),

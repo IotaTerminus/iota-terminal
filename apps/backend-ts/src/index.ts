@@ -28,6 +28,17 @@ const port = 8082;
 
 app.use(express.json());
 
+// Behind Cloudflare Tunnel, req.ip reflects the tunnel connection rather
+// than the real visitor, so prefer Cloudflare's CF-Connecting-IP header
+// (falling back to req.ip for local dev, where there's no Cloudflare proxy).
+function clientIp(req: express.Request): string {
+  const header = req.headers['cf-connecting-ip'];
+  if (typeof header === 'string' && header.length > 0) {
+    return header;
+  }
+  return req.ip ?? 'unknown';
+}
+
 app.get('/api/ts/system/status', (_req, res) => {
   res.json({
     backend: 'ts',
@@ -96,7 +107,7 @@ app.post('/api/ts/contact', async (req, res) => {
     return;
   }
 
-  const ip = req.ip ?? 'unknown';
+  const ip = clientIp(req);
   if (isRateLimited(ip)) {
     res.status(429).json({ ok: false } satisfies ContactResponse);
     return;

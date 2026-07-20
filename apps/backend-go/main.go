@@ -82,6 +82,13 @@ func (rl *rateLimiter) allow(key string) bool {
 }
 
 func clientIP(r *http.Request) string {
+	// Behind Cloudflare Tunnel, RemoteAddr reflects the tunnel connection
+	// rather than the real visitor, so prefer Cloudflare's CF-Connecting-IP
+	// header (falling back to RemoteAddr for local dev, where there's no
+	// Cloudflare proxy).
+	if cfIP := r.Header.Get("Cf-Connecting-Ip"); cfIP != "" {
+		return cfIP
+	}
 	host, _, err := net.SplitHostPort(r.RemoteAddr)
 	if err != nil {
 		return r.RemoteAddr
