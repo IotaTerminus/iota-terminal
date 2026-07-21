@@ -23,7 +23,24 @@ export const PROJECTS: Project[] = [
       'based: GitHub Actions builds and smoke-tests images, publishes to GHCR, ' +
       'and a Raspberry Pi stack behind Cloudflare Tunnel auto-updates via ' +
       'watchtower for continuous delivery.',
-    technologies: ['TypeScript', 'React', 'Angular', 'Go', 'Rust', 'Tailwind CSS'],
+    technologies: [
+      'TypeScript',
+      'React',
+      'Angular',
+      'Go',
+      'Rust',
+      'Tailwind CSS',
+      'Turborepo',
+      'Docker',
+      'Docker Compose',
+      'GitHub Actions',
+      'GitHub Container Registry (GHCR)',
+      'Cloudflare Tunnel',
+      'Caddy',
+      'Twilio',
+      'SQLite',
+      'Web Components'
+    ],
     githubUrl: 'https://github.com/IotaTerminus/iota-terminal'
   },
   {
@@ -37,10 +54,7 @@ export const PROJECTS: Project[] = [
       'pricing, stores historical information, and serves it through a web ' +
       'API. The codebase is a multi-crate Rust workspace with binary apps ' +
       '(api_server, ingestor) and shared libraries (common, osrs_client), ' +
-      'designed to teach core Rust skills progressively: ownership and ' +
-      'borrowing, Result/Option error handling, pattern matching, modules, ' +
-      'traits, async/await, JSON serialization with Serde, HTTP integration ' +
-      'with Reqwest, and API development with Axum. The roadmap includes ' +
+      'designed to teach core Rust skills progressively. The roadmap includes ' +
       'database integration (PostgreSQL/SQLite via SQLx), migrations, testing, ' +
       'logging/tracing, rate limiting, concurrent ingestion, and Docker-based ' +
       'deployment, supported by a practical learning workflow built around ' +
