@@ -1,0 +1,12 @@
+if [ "${SKIP_SMOKE_TEST:-}" = "1" ]; then
+  echo "SKIP_SMOKE_TEST=1 set, skipping pre-push smoke test"
+  exit 0
+fi
+
+if ! command -v docker >/dev/null 2>&1; then
+  echo "docker not found, skipping pre-push smoke test"
+  exit 0
+fi
+
+echo "Running smoke test before push (set SKIP_SMOKE_TEST=1 to skip)..."
+npm run smoke-test --silent

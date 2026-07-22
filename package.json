@@ -13,6 +13,7 @@
     "dev:all": "concurrently -n react,angular,go,rust,ts -c blue,red,cyan,yellow,green \"npm run dev --workspace=react-ui\" \"npm run dev --workspace=angular-ui\" \"npm run dev --workspace=backend-go\" \"npm run dev --workspace=backend-rust\" \"npm run dev --workspace=backend-ts\"",
     "lint": "turbo run lint",
     "test": "turbo run test",
+    "smoke-test": "deploy/smoke-test.sh",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "prepare": "husky"

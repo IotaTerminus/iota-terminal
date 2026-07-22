@@ -126,23 +126,27 @@ docker compose pull && docker compose up -d
 
 ## Testing the stack locally before pushing
 
-The same commands the CI `smoke-test` job runs can be run on any machine
-with Docker — this builds every image locally (native arch, not arm64) and
-publishes ports so you can curl each service directly:
+`deploy/smoke-test.sh` wraps the same steps the CI `smoke-test` job runs
+(build every image for the host's native arch, boot the stack, curl each
+service, tear down) so it can be run identically from CI, a pre-push git
+hook, or by hand:
 
 ```bash
-cd deploy
-docker compose -f docker-compose.yml -f docker-compose.ci.yml \
-  up --build -d backend-go backend-rust backend-ts react-ui angular-ui
-
-curl http://localhost:8080/api/go/system/status
-curl http://localhost:8081/api/rust/system/status
-curl http://localhost:8082/api/ts/system/status
-curl http://localhost:8090/   # react-ui
-curl http://localhost:8091/   # angular-ui
-
-docker compose -f docker-compose.yml -f docker-compose.ci.yml down -v
+npm run smoke-test
+# or directly:
+deploy/smoke-test.sh
 ```
+
+A `.husky/pre-push` hook runs this automatically before every `git push`
+(skips gracefully if Docker isn't installed). To skip it for a single push
+(e.g. no Docker available, or you've already verified the stack manually),
+set `SKIP_SMOKE_TEST=1 git push`.
+
+The script builds every image locally (native arch, not arm64), publishes
+ports so you can curl each service directly, and always tears the stack down
+afterward (`docker compose down -v`) even on failure. It also fails fast with
+a clear error if a native (non-Docker) dev process is already bound to one of
+the ports it needs (8080-8082, 8090-8091) — e.g. from `npm run dev:all`.
 
 `docker-compose.ci.yml` intentionally omits `cloudflared`/`watchtower` — they
 need real tunnel credentials and aren't relevant to a build/route smoke test.

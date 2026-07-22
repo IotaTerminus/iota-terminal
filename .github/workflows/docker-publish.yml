@@ -21,41 +21,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Build and start stack
-        working-directory: deploy
-        run: |
-          docker compose -f docker-compose.yml -f docker-compose.ci.yml \
-            up --build -d backend-go backend-rust backend-ts react-ui angular-ui
-
-      - name: Wait for services
-        run: |
-          for target in \
-            "http://localhost:8080/api/go/system/status" \
-            "http://localhost:8081/api/rust/system/status" \
-            "http://localhost:8082/api/ts/system/status" \
-            "http://localhost:8090/" \
-            "http://localhost:8091/"; do
-            echo "waiting for $target"
-            timeout 60 sh -c "until curl -sf $target > /dev/null; do sleep 2; done"
-          done
-
-      - name: Verify backend responses
-        run: |
-          curl -sf http://localhost:8080/api/go/system/status | grep -q '"backend":"go"'
-          curl -sf http://localhost:8081/api/rust/system/status | grep -q '"backend":"rust"'
-          curl -sf http://localhost:8082/api/ts/system/status | grep -q '"backend":"ts"'
-          curl -sf http://localhost:8090/ | grep -qi '<html'
-          curl -sf http://localhost:8091/ | grep -qi '<html'
-
-      - name: Show logs on failure
-        if: failure()
-        working-directory: deploy
-        run: docker compose -f docker-compose.yml -f docker-compose.ci.yml logs
-
-      - name: Tear down
-        if: always()
-        working-directory: deploy
-        run: docker compose -f docker-compose.yml -f docker-compose.ci.yml down -v
+      - name: Run smoke test
+        run: deploy/smoke-test.sh
 
   build-and-push:
     needs: smoke-test
