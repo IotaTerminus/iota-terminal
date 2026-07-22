@@ -1,9 +1,9 @@
 {
-	"name": "@iota/content",
-	"version": "1.0.0",
-	"main": "src/index.ts",
-	"types": "src/index.ts",
-	"dependencies": {
-		"@iota/types": "*"
-	}
+  "name": "@iota/content",
+  "version": "1.0.0",
+  "main": "src/index.ts",
+  "types": "src/index.ts",
+  "dependencies": {
+    "@iota/types": "*"
+  }
 }

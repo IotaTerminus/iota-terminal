@@ -1,0 +1,30 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+build/
+.angular/
+out-tsc/
+.turbo/
+bin/
+
+# Rust
+target/
+apps/backend-rust/Cargo.lock
+
+# Auto-generated / lockfiles (not meant to be reformatted)
+package-lock.json
+*.tsbuildinfo
+
+# SQLite runtime files
+shared/db/*.sqlite
+shared/db/*.sqlite-wal
+shared/db/*.sqlite-shm
+
+# Logs
+*.log
+
+# Languages Prettier has no parser for (kept explicit for clarity)
+*.go
+*.rs

@@ -4,12 +4,6 @@
     "outDir": "../../dist/apps/angular-ui",
     "types": []
   },
-  "files": [
-    "src/main.ts"
-  ],
-  "include": [
-    "src/**/*.ts",
-    "../../shared/types/src/**/*.ts",
-    "../../shared/content/src/**/*.ts"
-  ]
+  "files": ["src/main.ts"],
+  "include": ["src/**/*.ts", "../../shared/types/src/**/*.ts", "../../shared/content/src/**/*.ts"]
 }

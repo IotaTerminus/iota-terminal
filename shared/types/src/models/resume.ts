@@ -2,8 +2,8 @@ export interface Experience {
   id: string;
   company: string;
   role: string;
-  startDate: string; 
-  endDate?: string;  
+  startDate: string;
+  endDate?: string;
   highlights: string[];
 }
 

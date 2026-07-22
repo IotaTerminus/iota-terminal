@@ -20,6 +20,7 @@ In local dev, each frontend's dev server proxies `/api/<backend>` to the matchin
 ## Deployment architecture
 
 The site runs on a Raspberry Pi 4 behind a single Cloudflare Tunnel, with three public hostnames sharing it:
+
 - `iotaterminus.dev` — onboarding-only picker (same `angular-ui` build; `apps/angular-ui/src/app.component.ts` checks `window.location.hostname` and renders a picker instead of the terminal demo when it's the bare root domain).
 - `angular.iotaterminus.dev` / `react.iotaterminus.dev` — the full demo apps.
 

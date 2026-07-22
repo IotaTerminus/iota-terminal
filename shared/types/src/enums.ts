@@ -1,7 +1,7 @@
 export enum BackendType {
-    Go = 'go',
-    Rust = 'rust',
-    TypeScript = 'typescript'
+  Go = 'go',
+  Rust = 'rust',
+  TypeScript = 'typescript'
 }
 
 export enum SystemStatusLevel {

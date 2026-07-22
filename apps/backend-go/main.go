@@ -2,18 +2,27 @@
 package main
 
 import (
+	"crypto/rand"
+	"crypto/sha256"
+	"crypto/subtle"
+	"database/sql"
+	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log"
 	"net"
 	"net/http"
 	"net/url"
 	"os"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
+	"unicode/utf8"
 
 	"github.com/joho/godotenv"
+	_ "modernc.org/sqlite"
 )
 
 type statusResponse struct {
@@ -41,6 +50,48 @@ type contactSubmission struct {
 }
 
 type contactResponse struct {
+	OK bool `json:"ok"`
+}
+
+type guestbookEntry struct {
+	ID        int    `json:"id"`
+	Name      string `json:"name"`
+	Message   string `json:"message"`
+	CreatedAt string `json:"createdAt"`
+	UpdatedAt string `json:"updatedAt"`
+}
+
+type guestbookListResponse struct {
+	Entries []guestbookEntry `json:"entries"`
+}
+
+type guestbookCreateRequest struct {
+	Name    string `json:"name"`
+	Message string `json:"message"`
+	Company string `json:"company"`
+}
+
+type guestbookCreateResponse struct {
+	OK        bool            `json:"ok"`
+	Entry     *guestbookEntry `json:"entry,omitempty"`
+	EditToken string          `json:"editToken,omitempty"`
+}
+
+type guestbookUpdateRequest struct {
+	Message   string `json:"message"`
+	EditToken string `json:"editToken"`
+}
+
+type guestbookUpdateResponse struct {
+	OK    bool            `json:"ok"`
+	Entry *guestbookEntry `json:"entry,omitempty"`
+}
+
+type guestbookDeleteRequest struct {
+	EditToken string `json:"editToken"`
+}
+
+type guestbookDeleteResponse struct {
 	OK bool `json:"ok"`
 }
 
@@ -177,6 +228,357 @@ func contactHandler(rl *rateLimiter) http.HandlerFunc {
 	}
 }
 
+func openGuestbookDB() (*sql.DB, error) {
+	dbPath := os.Getenv("IOTA_DB_PATH")
+	if dbPath == "" {
+		dbPath = "../../shared/db/iota.sqlite"
+	}
+
+	db, err := sql.Open("sqlite", dbPath)
+	if err != nil {
+		return nil, err
+	}
+
+	// Keep the pool on a single SQLite connection so the startup PRAGMAs apply
+	// consistently for all requests handled by this demo backend.
+	db.SetMaxOpenConns(1)
+	db.SetMaxIdleConns(1)
+
+	if err := db.Ping(); err != nil {
+		db.Close()
+		return nil, err
+	}
+	if _, err := db.Exec("PRAGMA journal_mode=WAL"); err != nil {
+		db.Close()
+		return nil, err
+	}
+	if _, err := db.Exec("PRAGMA busy_timeout=5000"); err != nil {
+		db.Close()
+		return nil, err
+	}
+
+	return db, nil
+}
+
+func writeJSON(w http.ResponseWriter, status int, payload any) {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(status)
+	if payload != nil {
+		json.NewEncoder(w).Encode(payload)
+	}
+}
+
+func validateGuestbookName(name string) (string, bool) {
+	trimmed := strings.TrimSpace(name)
+	length := utf8.RuneCountInString(trimmed)
+	return trimmed, length >= 1 && length <= 40
+}
+
+func validateGuestbookMessage(message string) (string, bool) {
+	trimmed := strings.TrimSpace(message)
+	length := utf8.RuneCountInString(trimmed)
+	return trimmed, length >= 1 && length <= 280
+}
+
+// The raw edit token is only returned once to the client; the database stores
+// only its SHA-256 hash so a DB leak does not reveal reusable edit secrets.
+func hashEditToken(token string) string {
+	sum := sha256.Sum256([]byte(token))
+	return hex.EncodeToString(sum[:])
+}
+
+func newEditToken() (string, error) {
+	tokenBytes := make([]byte, 32)
+	if _, err := rand.Read(tokenBytes); err != nil {
+		return "", err
+	}
+	return hex.EncodeToString(tokenBytes), nil
+}
+
+func scanGuestbookEntry(row *sql.Row) (*guestbookEntry, error) {
+	var entry guestbookEntry
+	if err := row.Scan(&entry.ID, &entry.Name, &entry.Message, &entry.CreatedAt, &entry.UpdatedAt); err != nil {
+		return nil, err
+	}
+	return &entry, nil
+}
+
+func guestbookHandler(db *sql.DB, rl *rateLimiter) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		switch r.Method {
+		case http.MethodGet:
+			rows, err := db.Query(`
+				SELECT id, name, message, created_at, updated_at
+				FROM guestbook_entries
+				ORDER BY created_at ASC, id ASC
+			`)
+			if err != nil {
+				log.Printf("backend-go: failed to list guestbook entries: %v", err)
+				writeJSON(w, http.StatusInternalServerError, guestbookListResponse{Entries: []guestbookEntry{}})
+				return
+			}
+			defer rows.Close()
+
+			entries := make([]guestbookEntry, 0)
+			for rows.Next() {
+				var entry guestbookEntry
+				if err := rows.Scan(&entry.ID, &entry.Name, &entry.Message, &entry.CreatedAt, &entry.UpdatedAt); err != nil {
+					log.Printf("backend-go: failed to scan guestbook entry: %v", err)
+					writeJSON(w, http.StatusInternalServerError, guestbookListResponse{Entries: []guestbookEntry{}})
+					return
+				}
+				entries = append(entries, entry)
+			}
+			if err := rows.Err(); err != nil {
+				log.Printf("backend-go: failed during guestbook row iteration: %v", err)
+				writeJSON(w, http.StatusInternalServerError, guestbookListResponse{Entries: []guestbookEntry{}})
+				return
+			}
+
+			writeJSON(w, http.StatusOK, guestbookListResponse{Entries: entries})
+		case http.MethodPost:
+			var req guestbookCreateRequest
+			if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+				writeJSON(w, http.StatusBadRequest, guestbookCreateResponse{OK: false})
+				return
+			}
+
+			// Honeypot: pretend success without creating a DB row or consuming
+			// more work against the shared guestbook write limit.
+			if req.Company != "" {
+				writeJSON(w, http.StatusCreated, guestbookCreateResponse{OK: true})
+				return
+			}
+
+			name, nameOK := validateGuestbookName(req.Name)
+			message, messageOK := validateGuestbookMessage(req.Message)
+			if !nameOK || !messageOK {
+				writeJSON(w, http.StatusBadRequest, guestbookCreateResponse{OK: false})
+				return
+			}
+			if !rl.allow(clientIP(r)) {
+				writeJSON(w, http.StatusTooManyRequests, guestbookCreateResponse{OK: false})
+				return
+			}
+
+			editToken, err := newEditToken()
+			if err != nil {
+				log.Printf("backend-go: failed to generate guestbook edit token: %v", err)
+				writeJSON(w, http.StatusInternalServerError, guestbookCreateResponse{OK: false})
+				return
+			}
+
+			tx, err := db.Begin()
+			if err != nil {
+				log.Printf("backend-go: failed to begin guestbook create tx: %v", err)
+				writeJSON(w, http.StatusInternalServerError, guestbookCreateResponse{OK: false})
+				return
+			}
+			defer tx.Rollback()
+
+			result, err := tx.Exec(`
+				INSERT INTO guestbook_entries (name, message, edit_token_hash)
+				VALUES (?, ?, ?)
+			`, name, message, hashEditToken(editToken))
+			if err != nil {
+				log.Printf("backend-go: failed to insert guestbook entry: %v", err)
+				writeJSON(w, http.StatusInternalServerError, guestbookCreateResponse{OK: false})
+				return
+			}
+
+			if _, err := tx.Exec(`
+				DELETE FROM guestbook_entries
+				WHERE id NOT IN (
+					SELECT id
+					FROM guestbook_entries
+					ORDER BY created_at DESC, id DESC
+					LIMIT 50
+				)
+			`); err != nil {
+				log.Printf("backend-go: failed to prune guestbook entries: %v", err)
+				writeJSON(w, http.StatusInternalServerError, guestbookCreateResponse{OK: false})
+				return
+			}
+
+			insertedID, err := result.LastInsertId()
+			if err != nil {
+				log.Printf("backend-go: failed to read guestbook insert id: %v", err)
+				writeJSON(w, http.StatusInternalServerError, guestbookCreateResponse{OK: false})
+				return
+			}
+
+			entry, err := scanGuestbookEntry(tx.QueryRow(`
+				SELECT id, name, message, created_at, updated_at
+				FROM guestbook_entries
+				WHERE id = ?
+			`, insertedID))
+			if err != nil {
+				log.Printf("backend-go: failed to fetch inserted guestbook entry: %v", err)
+				writeJSON(w, http.StatusInternalServerError, guestbookCreateResponse{OK: false})
+				return
+			}
+
+			if err := tx.Commit(); err != nil {
+				log.Printf("backend-go: failed to commit guestbook create tx: %v", err)
+				writeJSON(w, http.StatusInternalServerError, guestbookCreateResponse{OK: false})
+				return
+			}
+
+			writeJSON(w, http.StatusCreated, guestbookCreateResponse{
+				OK:        true,
+				Entry:     entry,
+				EditToken: editToken,
+			})
+		default:
+			writeJSON(w, http.StatusMethodNotAllowed, nil)
+		}
+	}
+}
+
+func guestbookEntryHandler(db *sql.DB, rl *rateLimiter) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		entryID := strings.TrimPrefix(r.URL.Path, "/api/go/guestbook/")
+		if entryID == "" || strings.Contains(entryID, "/") {
+			writeJSON(w, http.StatusNotFound, nil)
+			return
+		}
+
+		id, err := strconv.Atoi(entryID)
+		if err != nil || id <= 0 {
+			writeJSON(w, http.StatusNotFound, nil)
+			return
+		}
+
+		switch r.Method {
+		case http.MethodPatch:
+			var req guestbookUpdateRequest
+			if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+				writeJSON(w, http.StatusBadRequest, guestbookUpdateResponse{OK: false})
+				return
+			}
+
+			message, ok := validateGuestbookMessage(req.Message)
+			if !ok || req.EditToken == "" {
+				writeJSON(w, http.StatusBadRequest, guestbookUpdateResponse{OK: false})
+				return
+			}
+			if !rl.allow(clientIP(r)) {
+				writeJSON(w, http.StatusTooManyRequests, guestbookUpdateResponse{OK: false})
+				return
+			}
+
+			tx, err := db.Begin()
+			if err != nil {
+				log.Printf("backend-go: failed to begin guestbook update tx: %v", err)
+				writeJSON(w, http.StatusInternalServerError, guestbookUpdateResponse{OK: false})
+				return
+			}
+			defer tx.Rollback()
+
+			var storedHash string
+			if err := tx.QueryRow(`SELECT edit_token_hash FROM guestbook_entries WHERE id = ?`, id).Scan(&storedHash); err != nil {
+				if errors.Is(err, sql.ErrNoRows) {
+					writeJSON(w, http.StatusNotFound, guestbookUpdateResponse{OK: false})
+					return
+				}
+				log.Printf("backend-go: failed to look up guestbook entry for update: %v", err)
+				writeJSON(w, http.StatusInternalServerError, guestbookUpdateResponse{OK: false})
+				return
+			}
+			if subtle.ConstantTimeCompare([]byte(storedHash), []byte(hashEditToken(req.EditToken))) != 1 {
+				writeJSON(w, http.StatusForbidden, guestbookUpdateResponse{OK: false})
+				return
+			}
+
+			if _, err := tx.Exec(`
+				UPDATE guestbook_entries
+				SET message = ?, updated_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now')
+				WHERE id = ?
+			`, message, id); err != nil {
+				log.Printf("backend-go: failed to update guestbook entry: %v", err)
+				writeJSON(w, http.StatusInternalServerError, guestbookUpdateResponse{OK: false})
+				return
+			}
+
+			entry, err := scanGuestbookEntry(tx.QueryRow(`
+				SELECT id, name, message, created_at, updated_at
+				FROM guestbook_entries
+				WHERE id = ?
+			`, id))
+			if err != nil {
+				if errors.Is(err, sql.ErrNoRows) {
+					writeJSON(w, http.StatusNotFound, guestbookUpdateResponse{OK: false})
+					return
+				}
+				log.Printf("backend-go: failed to fetch updated guestbook entry: %v", err)
+				writeJSON(w, http.StatusInternalServerError, guestbookUpdateResponse{OK: false})
+				return
+			}
+
+			if err := tx.Commit(); err != nil {
+				log.Printf("backend-go: failed to commit guestbook update tx: %v", err)
+				writeJSON(w, http.StatusInternalServerError, guestbookUpdateResponse{OK: false})
+				return
+			}
+
+			writeJSON(w, http.StatusOK, guestbookUpdateResponse{OK: true, Entry: entry})
+		case http.MethodDelete:
+			var req guestbookDeleteRequest
+			if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+				writeJSON(w, http.StatusBadRequest, guestbookDeleteResponse{OK: false})
+				return
+			}
+			if req.EditToken == "" {
+				writeJSON(w, http.StatusBadRequest, guestbookDeleteResponse{OK: false})
+				return
+			}
+			if !rl.allow(clientIP(r)) {
+				writeJSON(w, http.StatusTooManyRequests, guestbookDeleteResponse{OK: false})
+				return
+			}
+
+			tx, err := db.Begin()
+			if err != nil {
+				log.Printf("backend-go: failed to begin guestbook delete tx: %v", err)
+				writeJSON(w, http.StatusInternalServerError, guestbookDeleteResponse{OK: false})
+				return
+			}
+			defer tx.Rollback()
+
+			var storedHash string
+			if err := tx.QueryRow(`SELECT edit_token_hash FROM guestbook_entries WHERE id = ?`, id).Scan(&storedHash); err != nil {
+				if errors.Is(err, sql.ErrNoRows) {
+					writeJSON(w, http.StatusNotFound, guestbookDeleteResponse{OK: false})
+					return
+				}
+				log.Printf("backend-go: failed to look up guestbook entry for delete: %v", err)
+				writeJSON(w, http.StatusInternalServerError, guestbookDeleteResponse{OK: false})
+				return
+			}
+			if subtle.ConstantTimeCompare([]byte(storedHash), []byte(hashEditToken(req.EditToken))) != 1 {
+				writeJSON(w, http.StatusForbidden, guestbookDeleteResponse{OK: false})
+				return
+			}
+
+			if _, err := tx.Exec(`DELETE FROM guestbook_entries WHERE id = ?`, id); err != nil {
+				log.Printf("backend-go: failed to delete guestbook entry: %v", err)
+				writeJSON(w, http.StatusInternalServerError, guestbookDeleteResponse{OK: false})
+				return
+			}
+
+			if err := tx.Commit(); err != nil {
+				log.Printf("backend-go: failed to commit guestbook delete tx: %v", err)
+				writeJSON(w, http.StatusInternalServerError, guestbookDeleteResponse{OK: false})
+				return
+			}
+
+			writeJSON(w, http.StatusOK, guestbookDeleteResponse{OK: true})
+		default:
+			writeJSON(w, http.StatusMethodNotAllowed, nil)
+		}
+	}
+}
+
 func main() {
 	// Local dev only: load the repo root .env (cwd is apps/backend-go per
 	// the documented `cd apps/backend-go && go run main.go` workflow). In
@@ -184,10 +586,18 @@ func main() {
 	// file here is a silent no-op.
 	_ = godotenv.Load("../../.env")
 
+	db, err := openGuestbookDB()
+	if err != nil {
+		log.Fatalf("backend-go: failed to open sqlite db: %v", err)
+	}
+	defer db.Close()
+
 	rl := newRateLimiter()
 
 	http.HandleFunc("/api/go/system/status", statusHandler)
 	http.HandleFunc("/api/go/contact", contactHandler(rl))
+	http.HandleFunc("/api/go/guestbook", guestbookHandler(db, rl))
+	http.HandleFunc("/api/go/guestbook/", guestbookEntryHandler(db, rl))
 
 	addr := ":8080"
 	log.Printf("backend-go listening on %s", addr)

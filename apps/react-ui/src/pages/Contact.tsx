@@ -5,7 +5,12 @@ import { getApiBaseUrl } from '../backend';
 type SubmitState = 'idle' | 'sending' | 'sent' | 'error';
 
 export default function Contact() {
-  const [form, setForm] = useState<ContactSubmission>({ name: '', email: '', message: '', company: '' });
+  const [form, setForm] = useState<ContactSubmission>({
+    name: '',
+    email: '',
+    message: '',
+    company: ''
+  });
   const [state, setState] = useState<SubmitState>('idle');
 
   async function handleSubmit(e: FormEvent) {

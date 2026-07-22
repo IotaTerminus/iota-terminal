@@ -17,26 +17,11 @@ registerIotaCursor();
 registerIotaWindow();
 
 @Component({
-    selector: 'app-root',
-    imports: [RouterOutlet],
-    standalone: true,
-    schemas: [CUSTOM_ELEMENTS_SCHEMA],
-    template: `
-    @if (isOnboarding) {
-      <main
-        class="min-h-screen flex flex-col items-center justify-center gap-4"
-        >
-        <h1 class="text-2xl">iota-terminal <iota-cursor></iota-cursor></h1>
-        <p>Pick a front-end to explore the boilerplate:</p>
-        <div class="flex gap-4">
-          <a href="https://react.iotaterminus.dev" class="underline">react-ui</a>
-          <a href="https://angular.iotaterminus.dev" class="underline">angular-ui</a>
-        </div>
-      </main>
-    } @else {
-      <router-outlet></router-outlet>
-    }
-    `
+  selector: 'app-root',
+  imports: [RouterOutlet],
+  standalone: true,
+  schemas: [CUSTOM_ELEMENTS_SCHEMA],
+  templateUrl: './app.component.html'
 })
 export class AppComponent {
   isOnboarding = window.location.hostname === ROOT_DOMAIN;

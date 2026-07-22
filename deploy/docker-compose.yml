@@ -17,6 +17,9 @@ services:
       - TWILIO_AUTH_TOKEN=${TWILIO_AUTH_TOKEN}
       - TWILIO_FROM_NUMBER=${TWILIO_FROM_NUMBER}
       - TWILIO_TO_NUMBER=${TWILIO_TO_NUMBER}
+      - IOTA_DB_PATH=/app/db/iota.sqlite
+    volumes:
+      - db-data:/app/db
     labels:
       - com.centurylinklabs.watchtower.enable=true
 
@@ -28,6 +31,9 @@ services:
       - TWILIO_AUTH_TOKEN=${TWILIO_AUTH_TOKEN}
       - TWILIO_FROM_NUMBER=${TWILIO_FROM_NUMBER}
       - TWILIO_TO_NUMBER=${TWILIO_TO_NUMBER}
+      - IOTA_DB_PATH=/app/db/iota.sqlite
+    volumes:
+      - db-data:/app/db
     labels:
       - com.centurylinklabs.watchtower.enable=true
 
@@ -39,9 +45,7 @@ services:
       - TWILIO_AUTH_TOKEN=${TWILIO_AUTH_TOKEN}
       - TWILIO_FROM_NUMBER=${TWILIO_FROM_NUMBER}
       - TWILIO_TO_NUMBER=${TWILIO_TO_NUMBER}
-    # No backend reads shared/db/iota.sqlite yet, but this volume reserves a
-    # persistent mount point for whichever backend ends up owning it, so the
-    # data survives image updates/recreations once that lands.
+      - IOTA_DB_PATH=/app/db/iota.sqlite
     volumes:
       - db-data:/app/db
     labels:

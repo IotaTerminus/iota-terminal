@@ -42,7 +42,7 @@ export const RESUME: ResumeData = {
       role: 'Middle Developer',
       startDate: '2025-01',
       highlights: [
-        "Led end-to-end delivery of complex features, including the Manual Trade-In project: a client-led bypass of standard JDPower lookups with dual-channel notifications to streamline dealer workflows, reduce communication latency, and improve customer and dealer relations while supporting more varied deals.",
+        'Led end-to-end delivery of complex features, including the Manual Trade-In project: a client-led bypass of standard JDPower lookups with dual-channel notifications to streamline dealer workflows, reduce communication latency, and improve customer and dealer relations while supporting more varied deals.',
         'Architected scalable Node.js and GraphQL microservices alongside component-driven Angular UIs focused on scalability and performance.',
         'Championed architectural best practices and company preferences through code reviews, technical documentation, and mentoring junior engineers and new team members.'
       ]

@@ -5,12 +5,13 @@
     "moduleResolution": "node16",
     "outDir": "dist",
     "rootDir": "src",
+    "baseUrl": ".",
     "strict": true,
     "esModuleInterop": true,
     "skipLibCheck": true,
     "resolveJsonModule": true,
     "paths": {
-      "@iota/types": ["../../shared/types/src/index.ts"],
+      "@iota/types": ["src/iota-types.d.ts"],
       "@iota/ui": ["../../shared/ui/src/index.ts"]
     }
   },

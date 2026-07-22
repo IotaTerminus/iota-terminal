@@ -1,9 +1,21 @@
 /**
  * backend-ts: the TypeScript implementation of the iota-terminal API contract.
  */
+import crypto from 'crypto';
 import path from 'path';
+import Database from 'better-sqlite3';
 import dotenv from 'dotenv';
 import express from 'express';
+import type {
+  GuestbookCreateRequest,
+  GuestbookCreateResponse,
+  GuestbookDeleteRequest,
+  GuestbookDeleteResponse,
+  GuestbookEntry,
+  GuestbookListResponse,
+  GuestbookUpdateRequest,
+  GuestbookUpdateResponse
+} from '@iota/types';
 
 // Local dev only: load the repo root .env (apps/backend-ts/src|dist -> ../../../.env).
 // In production, docker-compose injects these vars directly, so a missing
@@ -23,10 +35,25 @@ interface ContactResponse {
   ok: boolean;
 }
 
+interface GuestbookEntryRow {
+  id: number;
+  name: string;
+  message: string;
+  edit_token_hash: string;
+  created_at: string;
+  updated_at: string;
+}
+
 const app = express();
 const port = 8082;
+const dbPath =
+  process.env.IOTA_DB_PATH ?? path.resolve(__dirname, '../../../shared/db/iota.sqlite');
+const db = new Database(dbPath);
 
 app.use(express.json());
+
+db.pragma('journal_mode = WAL');
+db.pragma('busy_timeout = 5000');
 
 // Behind Cloudflare Tunnel, req.ip reflects the tunnel connection rather
 // than the real visitor, so prefer Cloudflare's CF-Connecting-IP header
@@ -63,8 +90,96 @@ function isRateLimited(ip: string): boolean {
   return false;
 }
 
+function mapGuestbookEntry(row: GuestbookEntryRow): GuestbookEntry {
+  return {
+    id: row.id,
+    name: row.name,
+    message: row.message,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at
+  };
+}
+
+function hashEditToken(token: string): string {
+  return crypto.createHash('sha256').update(token).digest('hex');
+}
+
+function parseGuestbookId(idParam: string): number | null {
+  if (!/^\d+$/.test(idParam)) {
+    return null;
+  }
+
+  const id = Number(idParam);
+  return Number.isSafeInteger(id) && id > 0 ? id : null;
+}
+
+function normalizeRequiredText(
+  value: unknown,
+  minLength: number,
+  maxLength: number
+): string | null {
+  if (typeof value !== 'string') {
+    return null;
+  }
+
+  const normalized = value.trim();
+  if (normalized.length < minLength || normalized.length > maxLength) {
+    return null;
+  }
+
+  return normalized;
+}
+
+const listGuestbookEntriesStmt = db.prepare(`
+  SELECT id, name, message, edit_token_hash, created_at, updated_at
+  FROM guestbook_entries
+  ORDER BY created_at ASC, id ASC
+`);
+
+const selectGuestbookEntryByIdStmt = db.prepare<[number], GuestbookEntryRow>(`
+  SELECT id, name, message, edit_token_hash, created_at, updated_at
+  FROM guestbook_entries
+  WHERE id = ?
+`);
+
+const insertGuestbookEntryStmt = db.prepare(`
+  INSERT INTO guestbook_entries (name, message, edit_token_hash)
+  VALUES (?, ?, ?)
+`);
+
+const pruneGuestbookEntriesStmt = db.prepare(`
+  DELETE FROM guestbook_entries
+  WHERE id NOT IN (
+    SELECT id
+    FROM guestbook_entries
+    ORDER BY created_at DESC, id DESC
+    LIMIT 50
+  )
+`);
+
+const updateGuestbookEntryStmt = db.prepare(`
+  UPDATE guestbook_entries
+  SET message = ?, updated_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now')
+  WHERE id = ?
+`);
+
+const deleteGuestbookEntryStmt = db.prepare(`
+  DELETE FROM guestbook_entries
+  WHERE id = ?
+`);
+
+const createGuestbookEntry = db.transaction(
+  (name: string, message: string, editTokenHash: string) => {
+    const result = insertGuestbookEntryStmt.run(name, message, editTokenHash);
+    pruneGuestbookEntriesStmt.run();
+
+    return selectGuestbookEntryByIdStmt.get(Number(result.lastInsertRowid));
+  }
+);
+
 async function sendContactSms(submission: ContactSubmission): Promise<boolean> {
-  const { TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, TWILIO_FROM_NUMBER, TWILIO_TO_NUMBER } = process.env;
+  const { TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, TWILIO_FROM_NUMBER, TWILIO_TO_NUMBER } =
+    process.env;
   if (!TWILIO_ACCOUNT_SID || !TWILIO_AUTH_TOKEN || !TWILIO_FROM_NUMBER || !TWILIO_TO_NUMBER) {
     console.error('backend-ts: Twilio env vars are not fully configured; skipping SMS send');
     return false;
@@ -124,6 +239,126 @@ app.post('/api/ts/contact', async (req, res) => {
     console.error('backend-ts: failed to send contact SMS', err);
     res.status(502).json({ ok: false } satisfies ContactResponse);
   }
+});
+
+app.get('/api/ts/guestbook', (_req, res) => {
+  const entries = listGuestbookEntriesStmt
+    .all()
+    .map((row) => mapGuestbookEntry(row as GuestbookEntryRow));
+
+  res.status(200).json({ entries } satisfies GuestbookListResponse);
+});
+
+app.post('/api/ts/guestbook', (req, res) => {
+  const submission = req.body as Partial<GuestbookCreateRequest>;
+  const name = normalizeRequiredText(submission.name, 1, 40);
+  const message = normalizeRequiredText(submission.message, 1, 280);
+
+  if (!name || !message) {
+    res.status(400).json({ ok: false } satisfies GuestbookCreateResponse);
+    return;
+  }
+
+  // Honeypot: real users never fill this in. Pretend success without
+  // writing to the guestbook or doing further work.
+  if (typeof submission.company === 'string' && submission.company.trim().length > 0) {
+    res.status(200).json({ ok: true } satisfies GuestbookCreateResponse);
+    return;
+  }
+
+  const ip = clientIp(req);
+  if (isRateLimited(ip)) {
+    res.status(429).json({ ok: false } satisfies GuestbookCreateResponse);
+    return;
+  }
+
+  const editToken = crypto.randomBytes(32).toString('base64url');
+  const entry = createGuestbookEntry(name, message, hashEditToken(editToken));
+
+  if (!entry) {
+    res.status(500).json({ ok: false } satisfies GuestbookCreateResponse);
+    return;
+  }
+
+  res.status(201).json({
+    ok: true,
+    entry: mapGuestbookEntry(entry),
+    editToken
+  } satisfies GuestbookCreateResponse);
+});
+
+app.patch('/api/ts/guestbook/:id', (req, res) => {
+  const id = parseGuestbookId(req.params.id);
+  if (id === null) {
+    res.status(404).json({ ok: false } satisfies GuestbookUpdateResponse);
+    return;
+  }
+
+  const submission = req.body as Partial<GuestbookUpdateRequest>;
+  const message = normalizeRequiredText(submission.message, 1, 280);
+  if (!message || typeof submission.editToken !== 'string' || submission.editToken.length === 0) {
+    res.status(400).json({ ok: false } satisfies GuestbookUpdateResponse);
+    return;
+  }
+
+  const ip = clientIp(req);
+  if (isRateLimited(ip)) {
+    res.status(429).json({ ok: false } satisfies GuestbookUpdateResponse);
+    return;
+  }
+
+  const existingEntry = selectGuestbookEntryByIdStmt.get(id);
+  if (!existingEntry) {
+    res.status(404).json({ ok: false } satisfies GuestbookUpdateResponse);
+    return;
+  }
+
+  if (existingEntry.edit_token_hash !== hashEditToken(submission.editToken)) {
+    res.status(403).json({ ok: false } satisfies GuestbookUpdateResponse);
+    return;
+  }
+
+  updateGuestbookEntryStmt.run(message, id);
+  const updatedEntry = selectGuestbookEntryByIdStmt.get(id);
+
+  res.status(200).json({
+    ok: true,
+    entry: updatedEntry ? mapGuestbookEntry(updatedEntry) : undefined
+  } satisfies GuestbookUpdateResponse);
+});
+
+app.delete('/api/ts/guestbook/:id', (req, res) => {
+  const id = parseGuestbookId(req.params.id);
+  if (id === null) {
+    res.status(404).json({ ok: false } satisfies GuestbookDeleteResponse);
+    return;
+  }
+
+  const submission = req.body as Partial<GuestbookDeleteRequest>;
+  if (typeof submission.editToken !== 'string' || submission.editToken.length === 0) {
+    res.status(400).json({ ok: false } satisfies GuestbookDeleteResponse);
+    return;
+  }
+
+  const ip = clientIp(req);
+  if (isRateLimited(ip)) {
+    res.status(429).json({ ok: false } satisfies GuestbookDeleteResponse);
+    return;
+  }
+
+  const existingEntry = selectGuestbookEntryByIdStmt.get(id);
+  if (!existingEntry) {
+    res.status(404).json({ ok: false } satisfies GuestbookDeleteResponse);
+    return;
+  }
+
+  if (existingEntry.edit_token_hash !== hashEditToken(submission.editToken)) {
+    res.status(403).json({ ok: false } satisfies GuestbookDeleteResponse);
+    return;
+  }
+
+  deleteGuestbookEntryStmt.run(id);
+  res.status(200).json({ ok: true } satisfies GuestbookDeleteResponse);
 });
 
 app.listen(port, () => {

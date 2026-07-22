@@ -1,0 +1,142 @@
+<iota-window title="~/guestbook">
+  <div class="flex flex-col gap-6">
+    <form class="flex flex-col gap-4 max-w-xl" (submit)="handleCreate($event)">
+      <label class="flex flex-col gap-1 text-sm">
+        name
+        <input
+          required
+          maxlength="40"
+          name="name"
+          class="bg-transparent border border-terminal-dim rounded px-2 py-1 text-terminal-fg"
+          [(ngModel)]="form.name"
+        />
+      </label>
+      <label class="flex flex-col gap-1 text-sm">
+        message
+        <textarea
+          required
+          maxlength="280"
+          rows="4"
+          name="message"
+          class="bg-transparent border border-terminal-dim rounded px-2 py-1 text-terminal-fg"
+          [(ngModel)]="form.message"
+        ></textarea>
+      </label>
+      <label class="absolute -left-[9999px] w-px h-px overflow-hidden" aria-hidden="true">
+        company
+        <input tabindex="-1" autocomplete="off" name="company" [(ngModel)]="form.company" />
+      </label>
+      <button
+        type="submit"
+        [disabled]="isCreating"
+        class="border border-terminal-fg text-terminal-fg rounded px-3 py-1 w-fit hover:bg-terminal-fg/10 disabled:opacity-60"
+      >
+        {{ isCreating ? 'signing...' : 'sign guestbook' }}
+      </button>
+      @if (createError) {
+        <p class="text-terminal-red text-sm">{{ createError }}</p>
+      }
+    </form>
+
+    <div class="border-t border-terminal-dim pt-4">
+      @if (isLoading) {
+        <p class="text-terminal-dim text-sm">loading guestbook...</p>
+      } @else if (loadError) {
+        <p class="text-terminal-red text-sm">{{ loadError }}</p>
+      } @else if (entries.length === 0) {
+        <p class="text-terminal-dim text-sm">no entries yet — be the first to sign.</p>
+      } @else {
+        <ul class="flex flex-col gap-6">
+          @for (entry of entries; track entry.id) {
+            <li class="flex flex-col gap-2">
+              <div class="flex flex-wrap items-baseline gap-x-3 gap-y-1 text-sm">
+                <span class="text-terminal-fg">{{ entry.name }}</span>
+                <span class="text-terminal-dim">{{ entry.createdAt }}</span>
+
+                @if (ownsEntry(entry.id)) {
+                  <div class="flex flex-wrap gap-3 text-terminal-dim">
+                    @if (editingId !== entry.id) {
+                      <button
+                        type="button"
+                        class="hover:text-terminal-fg underline"
+                        [disabled]="busyEntryId === entry.id"
+                        (click)="startEditing(entry)"
+                      >
+                        edit
+                      </button>
+                    }
+
+                    @if (deleteConfirmId === entry.id) {
+                      <span class="text-terminal-red">delete?</span>
+                      <button
+                        type="button"
+                        class="hover:text-terminal-fg underline"
+                        [disabled]="busyEntryId === entry.id"
+                        (click)="deleteEntry(entry.id)"
+                      >
+                        yes
+                      </button>
+                      <button
+                        type="button"
+                        class="hover:text-terminal-fg underline"
+                        [disabled]="busyEntryId === entry.id"
+                        (click)="cancelDelete()"
+                      >
+                        no
+                      </button>
+                    } @else {
+                      <button
+                        type="button"
+                        class="hover:text-terminal-fg underline"
+                        [disabled]="busyEntryId === entry.id"
+                        (click)="confirmDelete(entry.id)"
+                      >
+                        delete
+                      </button>
+                    }
+                  </div>
+                }
+              </div>
+
+              @if (editingId === entry.id) {
+                <div class="flex flex-col gap-3">
+                  <textarea
+                    maxlength="280"
+                    rows="4"
+                    class="bg-transparent border border-terminal-dim rounded px-2 py-1 text-terminal-fg"
+                    [ngModel]="editMessage"
+                    (ngModelChange)="editMessage = $event"
+                  ></textarea>
+                  <div class="flex gap-3 text-sm">
+                    <button
+                      type="button"
+                      class="border border-terminal-fg text-terminal-fg rounded px-3 py-1 hover:bg-terminal-fg/10 disabled:opacity-60"
+                      [disabled]="busyEntryId === entry.id"
+                      (click)="saveEdit(entry.id)"
+                    >
+                      save
+                    </button>
+                    <button
+                      type="button"
+                      class="border border-terminal-dim text-terminal-dim rounded px-3 py-1 hover:text-terminal-fg hover:border-terminal-fg disabled:opacity-60"
+                      [disabled]="busyEntryId === entry.id"
+                      (click)="cancelEditing()"
+                    >
+                      cancel
+                    </button>
+                  </div>
+                </div>
+              } @else {
+                <p class="whitespace-pre-wrap break-words">{{ entry.message }}</p>
+              }
+
+              @if (entryErrorId === entry.id && entryError) {
+                <p class="text-terminal-red text-sm">{{ entryError }}</p>
+              }
+            </li>
+          }
+        </ul>
+      }
+    </div>
+  </div>
+</iota-window>

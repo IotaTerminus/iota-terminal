@@ -6,6 +6,7 @@ import AboutMe from './pages/AboutMe';
 import AboutSite from './pages/AboutSite';
 import Projects from './pages/Projects';
 import Resume from './pages/Resume';
+import Guestbook from './pages/Guestbook';
 // TODO - re-enable contact page
 // import Contact from './pages/Contact';
 import NotFound from './pages/NotFound';
@@ -15,7 +16,8 @@ registerIotaWindow();
 
 /**
  * Route paths mirror @iota/content's NAV_ITEMS ids/paths (home, about,
- * stack, projects, resume, contact) so the nav bar and router never drift.
+ * stack, projects, resume, guestbook, contact) so the nav bar and router
+ * never drift.
  */
 export default function App() {
   return (
@@ -26,6 +28,7 @@ export default function App() {
         <Route path="stack" element={<AboutSite />} />
         <Route path="projects" element={<Projects />} />
         <Route path="resume" element={<Resume />} />
+        <Route path="guestbook" element={<Guestbook />} />
         {/* TODO - re-enable contact page */}
         {/* <Route path="contact" element={<Contact />} /> */}
         <Route path="*" element={<NotFound />} />

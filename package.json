@@ -12,10 +12,20 @@
     "dev": "turbo run dev",
     "dev:all": "concurrently -n react,angular,go,rust,ts -c blue,red,cyan,yellow,green \"npm run dev --workspace=react-ui\" \"npm run dev --workspace=angular-ui\" \"npm run dev --workspace=backend-go\" \"npm run dev --workspace=backend-rust\" \"npm run dev --workspace=backend-ts\"",
     "lint": "turbo run lint",
-    "test": "turbo run test"
+    "test": "turbo run test",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "prepare": "husky"
+  },
+  "lint-staged": {
+    "*.{js,jsx,ts,tsx,json,md,yml,yaml,html,css,scss}": "prettier --write"
   },
   "devDependencies": {
     "concurrently": "^10.0.3",
+    "eslint-config-prettier": "^10.1.8",
+    "husky": "^9.1.7",
+    "lint-staged": "^17.1.0",
+    "prettier": "^3.9.6",
     "turbo": "^2.10.5"
   },
   "packageManager": "npm@11.18.0",

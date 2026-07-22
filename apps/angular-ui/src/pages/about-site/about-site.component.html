@@ -1,0 +1,7 @@
+<iota-window title="~/site.md">
+  <div class="flex flex-col gap-4">
+    @for (paragraph of paragraphs; track $index) {
+      <p>{{ paragraph }}</p>
+    }
+  </div>
+</iota-window>

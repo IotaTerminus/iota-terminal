@@ -12,28 +12,7 @@ import { NAV_ITEMS } from '@iota/content';
   standalone: true,
   imports: [RouterLink, RouterLinkActive, RouterOutlet],
   schemas: [CUSTOM_ELEMENTS_SCHEMA],
-  template: `
-    <div class="min-h-screen flex flex-col gap-6 p-4 md:p-8 max-w-3xl mx-auto">
-      <header class="flex flex-col gap-3">
-        <h1 class="text-2xl">iota-terminal <iota-cursor></iota-cursor></h1>
-        <nav class="flex flex-wrap gap-x-4 gap-y-2 text-sm">
-          @for (item of navItems; track item.id) {
-            <a
-              [routerLink]="'/' + item.path"
-              routerLinkActive
-              #rla="routerLinkActive"
-              [routerLinkActiveOptions]="{ exact: item.path === '' }"
-              [class]="rla.isActive ? 'text-terminal-fg underline' : 'text-terminal-dim hover:text-terminal-fg'"
-              >{{ item.label }}</a
-            >
-          }
-        </nav>
-      </header>
-      <main class="flex-1">
-        <router-outlet></router-outlet>
-      </main>
-    </div>
-  `
+  templateUrl: './layout.component.html'
 })
 export class LayoutComponent {
   navItems = NAV_ITEMS;

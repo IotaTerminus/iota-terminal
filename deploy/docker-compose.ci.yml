@@ -15,32 +15,32 @@ services:
       context: ../apps/backend-go
       dockerfile: Dockerfile
     ports:
-      - "8080:8080"
+      - '8080:8080'
 
   backend-rust:
     build:
       context: ../apps/backend-rust
       dockerfile: Dockerfile
     ports:
-      - "8081:8081"
+      - '8081:8081'
 
   backend-ts:
     build:
       context: ..
       dockerfile: apps/backend-ts/Dockerfile
     ports:
-      - "8082:8082"
+      - '8082:8082'
 
   react-ui:
     build:
       context: ..
       dockerfile: apps/react-ui/Dockerfile
     ports:
-      - "8090:80"
+      - '8090:80'
 
   angular-ui:
     build:
       context: ..
       dockerfile: apps/angular-ui/Dockerfile
     ports:
-      - "8091:80"
+      - '8091:80'

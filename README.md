@@ -1,4 +1,5 @@
 # iota-terminal
+
 Terminal-themed Personal website. Utilizes Angular &amp; React front-ends that can then dynamically choose to use either Go, Rust, or TS based back-ends.
 
 ## Structure
@@ -31,6 +32,11 @@ injected by `deploy/docker-compose.yml` — see [`deploy/DEPLOYMENT.md`](deploy/
 If `.env` is missing or incomplete, the endpoint still responds but logs a
 warning and skips sending the SMS.
 
+When you add or change keys in this `.env`, restart the backend process so it
+reloads the file. If you're using the Docker deployment, recreate the affected
+containers with `docker compose up -d --force-recreate` so they pick up the
+new values.
+
 `npm run dev` only starts the JS/TS workspaces (`react-ui` on `:5173`, `angular-ui` on `:4200`, `backend-ts` on `:8082`). To also spin up the Go and Rust backends in the same terminal, use:
 
 ```bash
@@ -51,13 +57,13 @@ The frontends read an `active_backend` key (`"go" | "rust" | "ts"`) from `localS
 
 With `npm run dev:all` (or `npm run dev` + the backends) running:
 
-| Component | URL |
-| --- | --- |
-| react-ui | http://localhost:5173 |
-| angular-ui (demo) | http://localhost:4200 |
-| backend-go | http://localhost:8080/api/go/system/status |
-| backend-rust | http://localhost:8081/api/rust/system/status |
-| backend-ts | http://localhost:8082/api/ts/system/status |
+| Component         | URL                                          |
+| ----------------- | -------------------------------------------- |
+| react-ui          | http://localhost:5173                        |
+| angular-ui (demo) | http://localhost:4200                        |
+| backend-go        | http://localhost:8080/api/go/system/status   |
+| backend-rust      | http://localhost:8081/api/rust/system/status |
+| backend-ts        | http://localhost:8082/api/ts/system/status   |
 
 Each frontend also proxies those same API paths, e.g. `http://localhost:5173/api/go/system/status` or `http://localhost:4200/api/rust/system/status`.
 

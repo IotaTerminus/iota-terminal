@@ -5,15 +5,7 @@ import { ABOUT_ME } from '@iota/content';
   selector: 'app-about-me',
   standalone: true,
   schemas: [CUSTOM_ELEMENTS_SCHEMA],
-  template: `
-    <iota-window [attr.title]="'~/' + heading">
-      <div class="flex flex-col gap-4">
-        @for (paragraph of paragraphs; track $index) {
-          <p>{{ paragraph }}</p>
-        }
-      </div>
-    </iota-window>
-  `
+  templateUrl: './about-me.component.html'
 })
 export class AboutMeComponent {
   heading = ABOUT_ME.heading;

@@ -12,6 +12,7 @@ to `main`.
 ## One-time Pi setup
 
 1. **Install Docker** (with the compose plugin):
+
    ```bash
    curl -fsSL [https://get.docker.com](https://get.docker.com) | sh
    sudo usermod -aG docker $USER   # re-login after this
@@ -39,12 +40,13 @@ to `main`.
      echo '<YOUR_PAT>' | docker login ghcr.io -u <owner> --password-stdin
      ```
      This writes credentials to `~/.docker/config.json` so `docker compose
-     pull`/`up` and watchtower's background pulls can authenticate. If the
+pull`/`up` and watchtower's background pulls can authenticate. If the
      PAT is rotated or expires, repeat this login step — pulls will start
      failing silently (watchtower just logs an error and keeps the old
      container running) until then.
 
    Either way, verify pulling works before moving on:
+
    ```bash
    docker pull ghcr.io/<owner>/iota-terminal-backend-go:latest
    ```
@@ -56,6 +58,7 @@ to `main`.
    - under the installation instructions, copy the long string following `--token`
 
 4. **Clone and configure the environment:**
+
    ```bash
    git clone git@github.com:IotaTerminus/iota-terminal.git
    cd iota-terminal/deploy
@@ -71,12 +74,19 @@ to `main`.
    TWILIO_TO_NUMBER=your_personal_number
    EOF
    ```
-   *note:* `.env` is populated via `1Password environments` to make cred rotation painless.
+
+   _note:_ `.env` is populated via `1Password environments` to make cred rotation painless.
+
+   Docker Compose reads these values when the containers are created, so if
+   you add or change keys here later, recreate the affected services with
+   `docker compose up -d --force-recreate` after updating the file.
 
 5. **Start the stack:**
+
    ```bash
    docker compose up -d
    ```
+
    check that the tunnel connected successfully with `docker compose logs -f cloudflared`
 
 6. **Configure Ingress Routes** Back in the Cloudflare Zero Trust dashboard, go to your tunnel's **Published application routes** (formerlly Public Hostnames) tab and add your routes. Cloudflare automatically provisions DNS CNAME records when you save these routes.
@@ -139,4 +149,6 @@ need real tunnel credentials and aren't relevant to a build/route smoke test.
 
 To also exercise `/contact` (Twilio SMS), set the four `TWILIO_*` vars in
 `deploy/.env` before bringing the stack up — otherwise the endpoint responds
-but logs a warning and skips sending.
+but logs a warning and skips sending. If you add those values after the
+containers are already running, recreate the affected containers so they can
+read the new env vars.

@@ -8,13 +8,7 @@ import type { SystemStatus } from '@iota/types';
   standalone: true,
   imports: [CommonModule],
   schemas: [CUSTOM_ELEMENTS_SCHEMA],
-  template: `
-    <iota-window title="~/home">
-      <p>angular-ui &mdash; active backend: {{ activeBackend }}</p>
-      <pre>{{ status ? (status | json) : 'connecting...' }}</pre>
-      <iota-cursor></iota-cursor>
-    </iota-window>
-  `
+  templateUrl: './home.component.html'
 })
 export class HomeComponent implements OnInit {
   activeBackend: BackendId = getActiveBackend();
