@@ -1,6 +1,6 @@
 import { Component, CUSTOM_ELEMENTS_SCHEMA } from '@angular/core';
 import { RouterOutlet } from '@angular/router';
-import { registerIotaCursor, registerIotaWindow } from '@iota/ui';
+import { registerIotaCursor, registerIotaWindow, registerIotaTerminal } from '@iota/ui';
 
 /**
  * The root domain (iotaterminus.dev) is onboarding-only: it never runs the
@@ -15,6 +15,7 @@ const ROOT_DOMAIN = 'iotaterminus.dev';
 
 registerIotaCursor();
 registerIotaWindow();
+registerIotaTerminal();
 
 @Component({
   selector: 'app-root',

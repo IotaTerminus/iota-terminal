@@ -5,5 +5,6 @@ declare namespace JSX {
     // We assign it standard HTML attributes so you can still pass standard props like 'className' or 'id'
     'iota-cursor': React.DetailedHTMLProps<React.HTMLAttributes<HTMLElement>, HTMLElement>;
     'iota-window': React.DetailedHTMLProps<React.HTMLAttributes<HTMLElement>, HTMLElement>;
+    'iota-terminal': React.DetailedHTMLProps<React.HTMLAttributes<HTMLElement>, HTMLElement>;
   }
 }

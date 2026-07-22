@@ -1,5 +1,5 @@
 import { Route, Routes } from 'react-router-dom';
-import { registerIotaCursor, registerIotaWindow } from '@iota/ui';
+import { registerIotaCursor, registerIotaWindow, registerIotaTerminal } from '@iota/ui';
 import Layout from './layout/Layout';
 import Home from './pages/Home';
 import AboutMe from './pages/AboutMe';
@@ -13,6 +13,7 @@ import NotFound from './pages/NotFound';
 
 registerIotaCursor();
 registerIotaWindow();
+registerIotaTerminal();
 
 /**
  * Route paths mirror @iota/content's NAV_ITEMS ids/paths (home, about,

@@ -11,6 +11,15 @@
   body {
     @apply bg-terminal-bg text-terminal-fg font-mono;
   }
+
+  html {
+    --iota-terminal-width: 40rem;
+  }
+
+  html.iota-terminal-open body {
+    padding-right: var(--iota-terminal-width);
+    transition: padding-right 0.2s ease-out;
+  }
 }
 
 @layer components {
