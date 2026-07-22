@@ -2,6 +2,10 @@
 #   docker build -f apps/backend-ts/Dockerfile -t iota-terminal-backend-ts .
 FROM node:22-alpine AS build
 WORKDIR /repo
+# better-sqlite3 has no prebuilt binary for Alpine's musl libc, so npm ci
+# falls back to compiling it from source via node-gyp, which needs Python
+# and a C/C++ toolchain that the base alpine image doesn't ship with.
+RUN apk add --no-cache python3 make g++
 COPY package.json package-lock.json ./
 COPY apps/backend-ts/package.json apps/backend-ts/package.json
 RUN npm ci --workspace=backend-ts --include-workspace-root

@@ -50,6 +50,32 @@ const dbPath =
   process.env.IOTA_DB_PATH ?? path.resolve(__dirname, '../../../shared/db/iota.sqlite');
 const db = new Database(dbPath);
 
+// Ensure the tables this backend queries exist before any statements below
+// are prepared (better-sqlite3 prepares — and fails immediately — at import
+// time, so a fresh/unmigrated db would otherwise crash the process on boot).
+// Mirrors shared/db/migrations/schema.sql; keep the two in sync. `make
+// db-init` remains the source of truth for local dev, but production/CI
+// deployments start from an empty named volume with no migration step, so
+// this backend needs to be able to bootstrap its own schema.
+db.exec(`
+  CREATE TABLE IF NOT EXISTS projects (
+      id          INTEGER PRIMARY KEY AUTOINCREMENT,
+      name        TEXT NOT NULL,
+      description TEXT,
+      created_at  TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
+      updated_at  TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
+  );
+
+  CREATE TABLE IF NOT EXISTS guestbook_entries (
+      id              INTEGER PRIMARY KEY AUTOINCREMENT,
+      name            TEXT NOT NULL,
+      message         TEXT NOT NULL,
+      edit_token_hash TEXT NOT NULL,
+      created_at      TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
+      updated_at      TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
+  );
+`);
+
 app.use(express.json());
 
 db.pragma('journal_mode = WAL');
